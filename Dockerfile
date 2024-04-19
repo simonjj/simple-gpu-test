@@ -16,4 +16,4 @@ RUN python3 -m pip install --no-cache-dir --upgrade pip && \
     torch \
     numpy
 
-CMD ["start.sh"]
+CMD ["/app/start.sh"]
