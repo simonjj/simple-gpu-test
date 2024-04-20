@@ -124,7 +124,7 @@ If you check the log output of the application, the above application should pro
 
 ## Rebuilding the Tester Image
 
-The referenced image can also be rebuild from [`https://github.com/simonjj/simple-gpu-test`](https://github.com/simonjj/simple-gpu-test) using the steps below. Please note that 
+The referenced image can also be rebuild from [`https://github.com/simonjj/simple-gpu-test`](https://github.com/simonjj/simple-gpu-test) using the steps below. Please note that we're also setting a `TARGET_IMAGE` here.
 
 ```
 # we assume docker is installed
@@ -138,35 +138,3 @@ export TARGET_IMAGE=yourcr.azurecr.io/your-image-name
 docker build --build-arg BASE_IMAGE=nvidia/cuda:12.1.1-runtime-ubuntu22.04  -t $TARGET_IMAGE .
 docker push $TARGET_IMAGE
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-SCRATCH
-
-
-FROM nvidia/cuda:12.0.1-runtime-ubuntu22.04
-
-RUN apt-get update && apt-get -y install apt-utils python3 python3-pip 
-
-RUN python3 -m pip install --no-cache-dir --upgrade pip && \
-    python3 -m pip install --no-cache-dir \
-    torch
-
-# Run app.py when the container launches
-CMD ["/usr/bin/bash", "-c", "sleep 12h"]
