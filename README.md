@@ -31,7 +31,7 @@ az containerapp env create \
     --enable-workload-profiles
 ```
 
-Now that we have the environment we run a Nvidia image which is prepped with CUDA. At the time of this writing 12.1.1 is a reasonable compromise between the most recent and oldest available CUDA toolkit versions. The important thing here is that we match the CUDA driver (which lives on the host) with the CUDA Toolkit (which lives in the container). 
+Now that we have the environment we run a Nvidia image which is prepped with CUDA. At the time of this writing `12.1.1` is a reasonable compromise between the most recent and oldest available CUDA toolkit versions. **The important thing here is that we match the CUDA driver (which lives on the host) with the CUDA Toolkit (which lives in the container)**. 
 
 ```
 # standup a basic cuda enabled container
@@ -48,14 +48,14 @@ az containerapp create \
 
 ## Finding the Underlying CUDA Details
 
-After the above setup you should now have access to an application with the name `cuda-explorer` running on your GPU workload profile. This application runs an official [Nvidia image](https://hub.docker.com/r/nvidia/cuda) with the needed toolkit, libraries and runtime included to leverage CUDA. For our purpose of investigating the underlying workload profile host we simply run the `sleep` command. Next we run the `nividia-smi` tool to display the CUDA version installed on the workload profile.
+After the above setup you should now have access to the `cuda-explorer` app running on your GPU workload profile. This application runs an official [Nvidia image](https://hub.docker.com/r/nvidia/cuda) with the needed toolkit, libraries and runtime included to leverage CUDA. For our purpose of investigating the underlying workload profile host we simply run the `sleep` as a container "workload". Next we run the `nividia-smi` tool to display the CUDA driver and toolkit versions installed.
 
 ```
 # run the following command
 az containerapp exec -g $RG --name cuda-explorer --command nvidia-smi
 ```
 
-`nvidia-smi` is similar to `top` but for your GPU. We should see something like the following output. 
+`nvidia-smi` is similar to `top` but for your GPU. You should see similar output: 
 
 ```
 Wed Apr 17 22:01:19 2024
@@ -80,14 +80,14 @@ Wed Apr 17 22:01:19 2024
 +---------------------------------------------------------------------------------------+
 ```
 
-If you see something similar to the above output your workload profile is ready to use. We can see the CUDA Toolki version (top right) is `12.2`. The driver version (top middle) is `535.54.03`. At the botom of the output you can see the the current processes running on the GPU. 
+If you see something similar to the above output your workload profile is ready to use. We can see the CUDA Toolkit version (top right) is `12.2`. The driver version (top middle) is `535.54.03`. At the bottom of the output you can see the the current processes running on the GPU (`No running processes found`). 
 
-Should you see a message about a failure to initialize NVML it is a due to `nvidia-smi` being unable to communicate with the driver. There's likely a driver-toolkit mismatch. For more detailed information on which driver is needed for which toolkit see [Minor Version Compatibility](https://docs.nvidia.com/deploy/cuda-compatibility/index.html#minor-version-compatibility).
+**Should you see a message about a failure to initialize NVML it is a due to `nvidia-smi` being unable to communicate with the driver. There's likely a driver-toolkit mismatch**. Try to (**upgrade to a newer tag**)[https://hub.docker.com/r/nvidia/cuda/tags] by following [these steps](#rebuilding-the-tester-image). For more detailed information on which driver is needed for which toolkit see [Minor Version Compatibility](https://docs.nvidia.com/deploy/cuda-compatibility/index.html#minor-version-compatibility).
 
 
 ## Exercising the GPU
 
-As the last step we want to exercise the CPU to confirm our application is actually able to leverage the GPU and compare how much faster it runs compared to the GPU. You can do so by deploying a pre-build container from `simonj.azurecr.io/gpu-tester`. This container includes a simple [PyTorch](https://pytorch.org/) script which executes a sizeable matrix multiplication. First on the CPU and then on the GPU to show the delta between the two. 
+As the last step we want to exercise the CPU to confirm our application is actually able to leverage the GPU, and compare how much faster than on CPU. You can do so by deploying a pre-build container from `simonj.azurecr.io/gpu-tester`. This container [includes a simple](https://github.com/simonjj/simple-gpu-test/blob/main/gpu_cpu_tester.py) [PyTorch](https://pytorch.org/) script which executes a sizeable matrix multiplication. First on the CPU and then on the GPU to show the delta between the two. 
 
 ```
 # standup the gpu tester
@@ -104,7 +104,22 @@ az containerapp create \
 If you check the log output of the application, the above application should produce the following output to stdout:
 
 ```
-
+2024-04-19T23:27:18.372559359Z CUDA is available. Running on GPU.
+2024-04-19T23:27:18.372588373Z Result:
+2024-04-19T23:27:18.372593042Z tensor([[  96.2215,  110.3856,   98.8350,  ...,   92.6685,  194.6051,
+2024-04-19T23:27:18.372596829Z          -151.6151],
+2024-04-19T23:27:18.372599474Z         [ 205.5347,  -66.7743,   65.3369,  ...,  101.4372,  -98.7581,
+2024-04-19T23:27:18.372601928Z            60.8353],
+2024-04-19T23:27:18.372604443Z         [ 137.5099,  -65.0038,  259.1740,  ...,  284.2198,  174.8975,
+2024-04-19T23:27:18.372606918Z          -135.4074],
+2024-04-19T23:27:18.372609402Z         ...,
+2024-04-19T23:27:18.372611907Z         [ -53.5666,  -29.2805, -103.1653,  ...,  232.8224, -135.2330,
+2024-04-19T23:27:18.372614352Z           271.0094],
+2024-04-19T23:27:18.372616827Z         [-194.0985,  251.4910, -250.8734,  ...,  -79.4291, -117.2673,
+2024-04-19T23:27:18.372619261Z           141.3860],
+2024-04-19T23:27:18.372621766Z         [ 194.9410,   32.1693,  -61.0127,  ...,  -75.4219,  203.4215,
+2024-04-19T23:27:18.372624180Z            13.1645]])
+2024-04-19T23:27:18.372627306Z Elapsed Time: 3.227062255859375 seconds
 ```
 
 ## Rebuilding the Tester Image
